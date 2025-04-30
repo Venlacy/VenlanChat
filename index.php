@@ -1,3 +1,54 @@
+
+<?php
+// 记录访问日志功能
+function logVisitorIP() {
+    // 在logVisitorIP函数内添加
+    $maxSize = 10 * 1024 * 1024; // 10MB
+    if (filesize($logFile) > $maxSize) {
+        $backupFile = $logFile . '.' . date('YmdHis');
+        rename($logFile, $backupFile);
+    }
+    // 获取客户端真实IP
+    $ip = $_SERVER['HTTP_CLIENT_IP'] ?? 
+          $_SERVER['HTTP_X_FORWARDED_FOR'] ?? 
+          $_SERVER['REMOTE_ADDR'] ?? 
+          'unknown';
+
+    // 过滤非法字符
+    $ip = filter_var($ip, FILTER_VALIDATE_IP) ? $ip : 'invalid_ip';
+    
+    // 获取其他信息
+    $timestamp = date('Y-m-d H:i:s');
+    $page = $_SERVER['REQUEST_URI'];
+    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'No User Agent';
+    
+    // 构造日志条目
+    $logEntry = sprintf(
+        "[%s] IP: %-15s | Page: %-30s | Agent: %s\n",
+        $timestamp,
+        $ip,
+        substr($page, 0, 30),
+        $userAgent
+    );
+    
+    // 写入日志文件
+    $logFile = __DIR__.'/log.txt';
+    
+    try {
+        $fp = fopen($logFile, 'a');
+        if (flock($fp, LOCK_EX)) { // 排他锁
+            fwrite($fp, $logEntry);
+            flock($fp, LOCK_UN);
+        }
+        fclose($fp);
+    } catch (Exception $e) {
+        // 静默处理错误，避免影响主程序
+    }
+}
+
+// 执行日志记录
+logVisitorIP();
+?>
 <?php require_once 'config.php'; ?>
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -14,13 +65,16 @@
             --base-font-size: 18px;
         }
 
-        @media (prefers-color-scheme: dark) {
-            :root:not([data-theme]) {
-                --bg-color: #212529;
-                --text-color: #f8f9fa;
-                --card-bg: #343a40;
-            }
-        }
+        @media (max-width: 768px) {
+    .message-images {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        grid-auto-rows: minmax(150px, auto);
+    }
+    
+    .message-image img {
+        max-height: 200px;
+    }
+}
 
         [data-theme="dark"] {
             --bg-color: #212529;
@@ -40,45 +94,18 @@
             line-height: 1.6;
         }
 
-        /* 字体调节条 */
-        .size-control {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1001;
-            width: 220px;
-            background: rgba(var(--card-bg-rgb), 0.95);
-            padding: 10px 20px;
-            border-radius: 30px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            backdrop-filter: blur(5px);
-        }
-
-        .size-control input[type="range"] {
-            width: 100%;
-            height: 6px;
-            background: var(--text-color);
-            border-radius: 3px;
-            opacity: 0.8;
-            transition: opacity 0.2s;
-        }
-
-        .size-control input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 20px;
-            height: 20px;
-            background: var(--text-color);
-            border-radius: 50%;
-            cursor: pointer;
-        }
-
-        /* 主题切换按钮 */
-        .theme-switch {
+        .theme-controls {
             position: fixed;
             top: 20px;
             right: 20px;
             z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .theme-switch {
             width: 55px;
             height: 55px;
             border-radius: 50%;
@@ -98,23 +125,83 @@
             transform: scale(1.1) rotate(15deg);
         }
 
-        .container {
-            padding-top: 5rem;
-            padding-bottom: 3rem;
+        .size-control {
+            height: 120px;
+            padding: 15px 10px;
+            background: rgba(0,0,0,0.1);
+            border-radius: 30px;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
-        .message-card {
-            transition: all 0.3s ease;
+        .size-control input[type="range"] {
+            -webkit-appearance: slider-vertical;
+            appearance: slider-vertical;
+            width: 6px;
+            height: 100px;
+            padding: 0 15px;
+            background: linear-gradient(
+                to bottom,
+                var(--text-color) 0%,
+                var(--text-color) calc(var(--value, 0.5) * 100%),
+                rgba(0,0,0,0.1) calc(var(--value, 0.5) * 100%),
+                rgba(0,0,0,0.1) 100%
+            );
+            border-radius: 3px;
+            transition: background 0.2s;
+        }
+
+        .message-images {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* 增加最小列宽 */
+    grid-auto-rows: minmax(200px, auto); /* 固定行高 */
+    margin-top: 1.5rem;
+}
+
+        .message-image {
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            cursor: zoom-in;
+            transition: transform 0.2s;
+        }
+
+        .message-image img {
+    width: 100%;
+    height: auto;
+    max-height: 300px;
+    object-fit: contain;
+    object-position: left top; /* 新增：内容左对齐 */
+    border-radius: 6px;
+    display: block;
+    margin-right: auto; /* 新增：左侧外边距自动填充 */
+}
+
+        .image-preview {
+            max-width: 200px;
+            margin: 0.5rem;
+            position: relative;
+        }
+
+        .image-preview img {
+            width: 100%;
+            border-radius: 6px;
+        }
+
+        .remove-image {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
-            margin-bottom: 1.5rem;
-            border: none;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-
-        .message-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
         }
 
         .modal-overlay {
@@ -126,126 +213,42 @@
             background: rgba(0,0,0,0.5);
             display: none;
             z-index: 2000;
-            overflow-y: auto;
-            padding: 1rem;
-        }
-
-        .modal-content {
-            background: var(--card-bg);
-            color: var(--text-color);
-            width: 100%;
-            max-width: 700px;
-            margin: 2rem auto;
-            padding: 2.5rem;
-            border-radius: 15px;
-            position: relative;
-        }
-
-        .close-modal {
-            position: absolute;
-            top: 1.5rem;
-            right: 1.5rem;
-            cursor: pointer;
-            font-size: 2.2rem;
-            line-height: 1;
-            opacity: 0.8;
-            transition: opacity 0.2s;
-        }
-
-        .close-modal:hover {
-            opacity: 1;
-        }
-
-        .delete-btn {
-            padding: 1rem 2rem;
-            font-size: 1.1rem;
-            margin-top: 2rem;
-            border-radius: 8px;
-            transition: all 0.2s ease;
-        }
-
-        .form-control {
-            padding: 1.2rem;
-            font-size: 1.1rem;
-            border-radius: 10px;
-            border: 2px solid rgba(0,0,0,0.1);
-            transition: all 0.3s ease;
-        }
-
-        textarea.form-control {
-            min-height: 180px;
-        }
-
-        .btn-primary {
-            padding: 1.2rem 2.4rem;
-            font-size: 1.2rem;
-            border-radius: 10px;
-            transition: all 0.3s ease;
-        }
-
-        @media (max-width: 768px) {
-            html {
-                font-size: 18px;
-            }
-            
-            .size-control {
-                width: 180px;
-                top: 15px;
-                padding: 8px 15px;
-            }
-            
-            .theme-switch {
-                width: 45px;
-                height: 45px;
-                font-size: 22px;
-                top: 15px;
-                right: 15px;
-            }
-            
-            .modal-content {
-                padding: 1.5rem;
-                border-radius: 12px;
-            }
-            
-            .form-control {
-                padding: 1rem;
-                font-size: 1rem;
-            }
+            align-items: center;
+            justify-content: center;
         }
     </style>
 </head>
 <body>
-    <!-- 字体调节条 -->
-    <div class="size-control">
-        <input type="range" id="fontSize" min="14" max="24" step="2" value="18">
-    </div>
-
-    <!-- 主题切换按钮 -->
-    <button class="theme-switch">💡</button>
-
-    <!-- 模态框 -->
-    <div class="modal-overlay">
-        <div class="modal-content">
-            <div class="close-modal">×</div>
-            <div id="modal-body"></div>
-            <button class="btn btn-danger delete-btn">删除</button>
+    <div class="theme-controls">
+        <button class="theme-switch">💡</button>
+        <div class="size-control">
+            <input type="range" id="fontSize" min="14" max="24" step="2" value="18">
         </div>
     </div>
 
     <div class="container py-4">
         <div class="row justify-content-center">
             <div class="col-12 col-lg-8">
-                <!-- 留言表单 -->
                 <div class="card mb-5" style="background: var(--card-bg)">
                     <div class="card-body p-4">
-                        <form id="messageForm">
+                        <form id="messageForm" enctype="multipart/form-data">
                             <div class="mb-4">
                                 <input type="text" class="form-control" name="sender" 
                                        placeholder="昵称" required autocomplete="name">
                             </div>
                             <div class="mb-4">
                                 <textarea class="form-control" name="content" 
-                                          rows="6" placeholder="留言内容..." required></textarea>
+                                          rows="6" placeholder="留言..." required></textarea>
+                            </div>
+                            <div class="mb-4">
+                                <label class="btn btn-outline-secondary w-100">
+                                    📷 选择图片（最多5张）
+                                    <input type="file" name="images[]" multiple 
+                                           accept="image/*" hidden
+                                           onchange="previewImages(event)">
+                                </label>
+                                <div class="image-previews mt-3"></div>
+                                <small class="text-muted">支持格式：JPG/PNG/GIF，每张不超过5MB</small>
                             </div>
                             <div class="d-grid">
                                 <button type="submit" class="btn btn-primary btn-lg">发送</button>
@@ -254,7 +257,6 @@
                     </div>
                 </div>
 
-                <!-- 留言列表 -->
                 <div id="messages">
                     <?php
                     try {
@@ -270,9 +272,22 @@
                                                 <small class="text-muted">'.date('Y-m-d H:i', strtotime($row['created_at'])).'</small>
                                             </div>
                                             <hr style="border-color: var(--text-color)">
-                                            <p class="card-text mt-3">'.nl2br(htmlspecialchars($row['content'])).'</p>
-                                        </div>
-                                      </div>';
+                                            <p class="card-text mt-3">'.nl2br(htmlspecialchars($row['content'])).'</p>';
+                                
+                                if (!empty($row['images'])) {
+                                    $images = json_decode($row['images']);
+                                    echo '<div class="message-images">';
+                                    foreach ($images as $img) {
+                                        echo '<div class="message-image">
+                                                <img src="uploads/'.$img.'" 
+                                                     loading="lazy"
+                                                     onclick="showFullImage(this)">
+                                              </div>';
+                                    }
+                                    echo '</div>';
+                                }
+                                
+                                echo '</div></div>';
                             }
                         } else {
                             echo '<div class="text-center text-muted py-5 display-6">暂无留言，快来第一个发言吧！</div>';
@@ -286,22 +301,32 @@
         </div>
     </div>
 
+    <div class="modal-overlay" onclick="this.style.display='none'">
+        <img id="fullImage" style="max-width: 90%; max-height: 90%; border-radius: 8px;">
+    </div>
+
     <script>
-        // 字体大小控制
         const fontSizeControl = document.getElementById('fontSize');
         const initFontSize = () => {
             const savedSize = localStorage.getItem('fontSize') || 18;
             document.documentElement.style.fontSize = savedSize + 'px';
             fontSizeControl.value = savedSize;
+            updateRangeStyle();
         };
-        
+
+        const updateRangeStyle = () => {
+            const range = fontSizeControl;
+            const max = parseFloat(range.max) || 24;
+            const min = parseFloat(range.min) || 14;
+            range.style.setProperty('--value', (range.value - min) / (max - min));
+        };
+
         fontSizeControl.addEventListener('input', (e) => {
-            const size = e.target.value;
-            document.documentElement.style.fontSize = size + 'px';
-            localStorage.setItem('fontSize', size);
+            updateRangeStyle();
+            document.documentElement.style.fontSize = e.target.value + 'px';
+            localStorage.setItem('fontSize', e.target.value);
         });
 
-        // 主题管理
         const updateThemeButton = () => {
             const theme = document.documentElement.getAttribute('data-theme');
             const btn = document.querySelector('.theme-switch');
@@ -340,70 +365,50 @@
             initFontSize();
         })();
 
-        // 留言交互功能
-        document.querySelectorAll('.message-card').forEach(card => {
-            card.addEventListener('click', (e) => {
-                const modal = document.querySelector('.modal-overlay');
-                const content = card.querySelector('.card-text').innerHTML;
-                const sender = card.querySelector('.card-title').textContent;
-                const time = card.querySelector('small').textContent;
-                
-                document.getElementById('modal-body').innerHTML = `
-                    <h3 class="mb-3">${sender}</h3>
-                    <small class="text-muted d-block mb-4">${time}</small>
-                    <div class="content-box">${content}</div>
-                `;
-                modal.style.display = 'block';
-                modal.dataset.id = card.dataset.id;
-            });
-        });
-
-        // 关闭模态框
-        document.querySelector('.close-modal').addEventListener('click', () => {
-            document.querySelector('.modal-overlay').style.display = 'none';
-        });
-
-        document.querySelector('.modal-overlay').addEventListener('click', function(e) {
-            if (e.target === this) this.style.display = 'none';
-        });
-
-        // 删除功能
-        document.querySelector('.delete-btn').addEventListener('click', async () => {
-            const id = document.querySelector('.modal-overlay').dataset.id;
-            const sender = prompt('请输入您的昵称以确认删除：');
+        function previewImages(event) {
+            const previews = document.querySelector('.image-previews');
+            previews.innerHTML = '';
             
-            if (sender) {
-                try {
-                    const response = await fetch('submit.php?action=delete', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id, sender: sender.trim() })
-                    });
-                    const data = await response.json();
-                    
-                    if (data.success) {
-                        document.querySelector(`.message-card[data-id="${id}"]`)?.remove();
-                        document.querySelector('.modal-overlay').style.display = 'none';
-                    } else {
-                        alert(data.error || '删除失败');
-                    }
-                } catch (error) {
-                    alert('请求失败');
+            Array.from(event.target.files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const div = document.createElement('div');
+                    div.className = 'image-preview';
+                    div.innerHTML = `
+                        <div class="remove-image" onclick="removePreview(this)">×</div>
+                        <img src="${e.target.result}">
+                    `;
+                    previews.appendChild(div);
                 }
-            }
-        });
+                reader.readAsDataURL(file);
+            });
+        }
 
-        // 表单提交
+        function removePreview(btn) {
+            const index = Array.from(btn.parentNode.parentNode.children).indexOf(btn.parentNode);
+            const files = document.querySelector('[name="images[]"]').files;
+            const newFiles = new DataTransfer();
+            
+            Array.from(files).forEach((file, i) => {
+                if(i !== index) newFiles.items.add(file);
+            });
+            
+            document.querySelector('[name="images[]"]').files = newFiles.files;
+            btn.parentNode.remove();
+        }
+
+        function showFullImage(img) {
+            document.getElementById('fullImage').src = img.src;
+            document.querySelector('.modal-overlay').style.display = 'flex';
+        }
+
         document.getElementById('messageForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(e.target);
             const submitBtn = e.target.querySelector('button[type="submit"]');
             
             submitBtn.disabled = true;
-            submitBtn.innerHTML = `
-                <span class="spinner-border spinner-border-sm" role="status"></span>
-                提交中...
-            `;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 上传中...';
 
             try {
                 const response = await fetch('submit.php', {
@@ -411,24 +416,14 @@
                     body: formData
                 });
                 
-                if (!response.ok) throw new Error(await response.text());
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || '上传失败');
                 location.reload();
             } catch (error) {
-                alert(error.message || '提交失败，请稍后重试');
+                alert(error.message);
             } finally {
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = '发送';
-            }
-        });
-
-        // 移动端优化
-        window.addEventListener('resize', () => {
-            if (window.visualViewport) {
-                document.activeElement.scrollIntoView({ 
-                    behavior: 'auto', 
-                    block: 'center',
-                    inline: 'center'
-                });
+                submitBtn.innerHTML = '发布留言';
             }
         });
     </script>
