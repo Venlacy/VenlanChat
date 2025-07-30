@@ -190,14 +190,7 @@ grep "Page accessed" data/log.txt | wc -l
 
 本项目采用 MIT 协议开源，详见 [LICENSE](LICENSE) 文件。
 
-## 🙋‍♂️ 技术支持
-
-- 📧 Email: support@venlanchat.com
-- 💬 QQ群: 123456789
-- 🌐 官网: https://venlanchat.com
-
----
 
 **⭐ 如果这个项目对你有帮助，请给我们一个Star！**
 
-Made with ❤️ by VenlanChat Team
+Made with ❤️ by Venlacy
