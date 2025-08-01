@@ -2,9 +2,9 @@
 # VenlanChat - 实时聊天室应用
 ![VenlanChat](https://img.shields.io/badge/VenlanChat-v3.0-blue) ![PHP](https://img.shields.io/badge/PHP-7.0+-green) ![License](https://img.shields.io/badge/License-MIT-yellow)  
 > [!IMPORTANT]
-> 本篇README由AI撰写，故需注意部分BUG  
-> 本项目的`install.php`文件暂时有些问题,故对于部署请按照下文
-> 解压压缩包到目录
+> 本篇README由AI撰写，故需注意部分BUG   
+> 本项目的`install.php`文件暂时有些问题,故对于部署请按照下文   
+> 解压压缩包到目录   
 > 在phpmyadmin中运行
 > ```sql
 > CREATE TABLE IF NOT EXISTS users (
