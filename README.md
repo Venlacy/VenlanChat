@@ -1,6 +1,33 @@
 
 # VenlanChat - 实时聊天室应用
 ![VenlanChat](https://img.shields.io/badge/VenlanChat-v3.0-blue) ![PHP](https://img.shields.io/badge/PHP-7.0+-green) ![License](https://img.shields.io/badge/License-MIT-yellow)  
+> [!IMPORTANT]
+> 本篇README由AI撰写，故需注意部分BUG  
+> 本项目的`install.php`文件暂时有些问题,故对于部署请按照下文
+> 解压压缩包到目录
+> 在phpmyadmin中运行
+> ```sql
+> CREATE TABLE IF NOT EXISTS users (
+>     id INT AUTO_INCREMENT PRIMARY KEY,
+>     username VARCHAR(50) NOT NULL UNIQUE,
+>     password VARCHAR(255) NOT NULL,
+>     email VARCHAR(100) NOT NULL UNIQUE,
+>     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+> );
+>
+> CREATE TABLE IF NOT EXISTS private_messages (
+>     id INT AUTO_INCREMENT PRIMARY KEY,
+>     sender_id INT NOT NULL,
+>     receiver_id INT NOT NULL,
+>     message TEXT NOT NULL,
+>     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+>     is_read BOOLEAN DEFAULT FALSE,
+>     FOREIGN KEY (sender_id) REFERENCES users(id),
+>     FOREIGN KEY (receiver_id) REFERENCES users(id)
+> );
+> ```
+> 然后顺手填下`config.php`中的内容就好啦
+
 一个轻量级、功能强大的实时聊天应用，支持公共聊天和私聊！  
 欢迎使用 VenlanChat，一个基于 PHP 和 MySQL 构建的开源聊天室应用。支持用户注册、登录、公共聊天、私聊以及管理员管理功能，界面响应式设计，兼容桌面和移动设备。使用 Markdown 和 LaTeX 增强消息格式，适合个人项目或小型社区使用。
 
