@@ -1,6 +1,6 @@
 # VenlanChat - 实时聊天室应用
 
-![VenlanChat](https://img.shields.io/badge/VenlanChat-v3.0-blue) ![PHP](https://img.shields.io/badge/PHP-7.4+-green) ![License](https://img.shields.io/badge/License-MIT-yellow)
+![VenlanChat](https://img.shields.io/badge/VenlanChat-v4.0-blue) ![PHP](https://img.shields.io/badge/PHP-7.4+-green) ![License](https://img.shields.io/badge/License-MIT-yellow)
 
 > **一个轻量级、功能强大的实时聊天应用，支持公共聊天和私聊！**
 
